@@ -20,6 +20,10 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+          ssl:
+            trust: smtp.gmail.com
+        debug: false
 
 server:
   port: 8083
