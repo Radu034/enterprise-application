@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Profile — ClinicApp</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+    <h1>🏥 ClinicApp — Doctor Portal</h1>
+    <nav class="header-nav">
+        <a href="doctor-dashboard.html">Dashboard</a>
+        <a href="doctor-profile.html" class="active">My Profile</a>
+        <a href="doctor-appointments.html">Appointments</a>
+    </nav>
+    <span class="header-user" id="headerUser"></span>
+</header>
+
+<div class="page">
+    <div class="flex-between mt-8">
+        <div>
+            <div class="page-title">My Profile</div>
+            <div class="page-subtitle">Manage your professional information visible to patients</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+
+    <div class="two-col">
+        <!-- Summary card -->
+        <div>
+            <div class="card">
+                <div class="profile-avatar" id="avatarInitials" style="background:linear-gradient(135deg,#10b981,#059669)">?</div>
+                <div style="font-size:20px;font-weight:700" id="profileName">—</div>
+                <div style="font-size:14px;color:#2b7cff;font-weight:500;margin-top:2px" id="profileSpecialty">—</div>
+                <div style="font-size:13px;color:#6b7280;margin-top:2px" id="profileEmail">—</div>
+                <hr class="divider">
+                <div class="text-muted" style="font-size:13px;line-height:2">
+                    <div>📞 <span id="displayPhone">—</span></div>
+                    <div>🏥 <span id="displayOffice">—</span></div>
+                    <div>📅 Available: <span id="displayDays">—</span></div>
+                </div>
+                <hr class="divider">
+                <div style="font-size:13px;color:#374151;line-height:1.6" id="displayBio">—</div>
+            </div>
+        </div>
+
+        <!-- Edit form -->
+        <div>
+            <div class="card">
+                <div class="card-title">Edit Professional Information</div>
+                <div class="profile-grid">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input id="firstName" placeholder="John">
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input id="lastName" placeholder="Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Specialty</label>
+                        <select id="specialty">
+                            <option value="">— Select —</option>
+                            <option>General Practitioner</option>
+                            <option>Cardiologist</option>
+                            <option>Dermatologist</option>
+                            <option>Neurologist</option>
+                            <option>Orthopedist</option>
+                            <option>Pediatrician</option>
+                            <option>Psychiatrist</option>
+                            <option>Radiologist</option>
+                            <option>Surgeon</option>
+                            <option>Urologist</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input id="phone" type="tel" placeholder="+40 700 000 000">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label>Office Location</label>
+                        <input id="officeLocation" placeholder="e.g. Room 204, Floor 2">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label>Available Days</label>
+                        <input id="availableDays" placeholder="e.g. Mon, Wed, Fri — 09:00–17:00">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label>Bio / About</label>
+                        <textarea id="bio" placeholder="Brief professional description visible to patients…"></textarea>
+                    </div>
+                </div>
+                <div id="msg"></div>
+                <button class="btn mt-16" onclick="saveProfile()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'doctor') { window.location.href = 'login.html'; }
+
+    document.getElementById('headerUser').textContent = `Dr. ${user.firstName} ${user.lastName}`;
+
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+    function showMsg(text, type) {
+        const el = document.getElementById('msg');
+        el.className = 'msg ' + type;
+        el.textContent = text;
+    }
+
+    function populateForm(d) {
+        document.getElementById('firstName').value     = d.firstName     || '';
+        document.getElementById('lastName').value      = d.lastName      || '';
+        document.getElementById('specialty').value     = d.specialty     || '';
+        document.getElementById('phone').value         = d.phone         || '';
+        document.getElementById('officeLocation').value = d.officeLocation || '';
+        document.getElementById('availableDays').value = d.availableDays || '';
+        document.getElementById('bio').value           = d.bio           || '';
+
+        const initials = ((d.firstName||'?')[0] + (d.lastName||'?')[0]).toUpperCase();
+        document.getElementById('avatarInitials').textContent  = initials;
+        document.getElementById('profileName').textContent     = `Dr. ${d.firstName} ${d.lastName}`;
+        document.getElementById('profileSpecialty').textContent = d.specialty || 'General Practitioner';
+        document.getElementById('profileEmail').textContent    = d.email;
+        document.getElementById('displayPhone').textContent    = d.phone         || 'Not set';
+        document.getElementById('displayOffice').textContent   = d.officeLocation|| 'Not set';
+        document.getElementById('displayDays').textContent     = d.availableDays || 'Not specified';
+        document.getElementById('displayBio').textContent      = d.bio           || 'No bio added yet.';
+    }
+
+    async function loadProfile() {
+        try {
+            const res = await fetch(`http://localhost:8083/doctors/${user.id}`);
+            if (res.ok) {
+                const fresh = await res.json();
+                fresh.role = 'doctor';
+                localStorage.setItem('user', JSON.stringify(fresh));
+                populateForm(fresh);
+                return;
+            }
+        } catch {}
+        populateForm(user);
+    }
+
+    async function saveProfile() {
+        const body = {
+            firstName:      document.getElementById('firstName').value.trim(),
+            lastName:       document.getElementById('lastName').value.trim(),
+            specialty:      document.getElementById('specialty').value,
+            phone:          document.getElementById('phone').value.trim(),
+            officeLocation: document.getElementById('officeLocation').value.trim(),
+            availableDays:  document.getElementById('availableDays').value.trim(),
+            bio:            document.getElementById('bio').value.trim()
+        };
+
+        if (!body.firstName || !body.lastName) {
+            showMsg('First and last name are required.', 'error'); return;
+        }
+
+        try {
+            const res = await fetch(`http://localhost:8083/doctors/${user.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) { showMsg('Failed to save. Please try again.', 'error'); return; }
+
+            const updated = await res.json();
+            updated.role = 'doctor';
+            localStorage.setItem('user', JSON.stringify(updated));
+            populateForm(updated);
+            showMsg('Profile saved successfully!', 'success');
+        } catch {
+            showMsg('Cannot connect to server.', 'error');
+        }
+    }
+
+    loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Dashboard — ClinicApp</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header>
+    <h1>🏥 ClinicApp — Doctor Portal</h1>
+    <nav class="header-nav">
+        <a href="doctor-dashboard.html" class="active">Dashboard</a>
+        <a href="doctor-profile.html">My Profile</a>
+        <a href="doctor-appointments.html">Appointments</a>
+    </nav>
+    <span class="header-user" id="headerUser"></span>
+</header>
+
+<div class="page">
+    <div class="flex-between mt-8">
+        <div>
+            <div class="page-title" id="welcomeTitle">Welcome, Doctor</div>
+            <div class="page-subtitle" id="specialtyLine">—</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Sign Out</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="statToday">—</div>
+            <div class="stat-label">Today's Appointments</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-value" id="statPending">—</div>
+            <div class="stat-label">Awaiting Confirmation</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-label">Total Appointments</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="stat-value" id="statCompleted">—</div>
+            <div class="stat-label">Completed</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>Appointment Status Breakdown</h3>
+            <div class="chart-canvas-wrap">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Appointments per Month</h3>
+            <div class="chart-canvas-wrap">
+                <canvas id="monthChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly schedule canvas -->
+    <div class="clinic-canvas-wrap">
+        <h3>This Week's Schedule</h3>
+        <canvas id="weekCanvas" width="900" height="160" style="width:100%;height:auto;border-radius:8px;"></canvas>
+    </div>
+
+    <!-- Today's appointments -->
+    <div class="card">
+        <div class="flex-between">
+            <div class="card-title" style="margin-bottom:0">Today's Appointments</div>
+            <a href="doctor-appointments.html" style="font-size:14px">Manage all →</a>
+        </div>
+        <hr class="divider">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Patient</th><th>Time</th><th>Reason</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="todayTable">
+                    <tr><td colspan="5" class="text-muted text-center" style="padding:20px">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'doctor') { window.location.href = 'login.html'; }
+
+    document.getElementById('headerUser').textContent = `Dr. ${user.firstName} ${user.lastName}`;
+    document.getElementById('welcomeTitle').textContent = `Welcome, Dr. ${user.lastName}`;
+    document.getElementById('specialtyLine').textContent = user.specialty || 'General Practitioner';
+
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+    /* ── Weekly schedule canvas ── */
+    function drawWeekCanvas(appointments) {
+        const canvas = document.getElementById('weekCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+
+        ctx.fillStyle = '#f8faff';
+        ctx.fillRect(0, 0, W, H);
+
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const colW = W / 7;
+        const now = new Date();
+        const todayDow = (now.getDay() + 6) % 7; // 0=Mon
+
+        // Get this week's appointments grouped by day
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - todayDow);
+        weekStart.setHours(0, 0, 0, 0);
+
+        const byDay = Array.from({ length: 7 }, () => []);
+        appointments.forEach(a => {
+            const d = new Date(a.dateTime);
+            const diff = Math.floor((d - weekStart) / 86400000);
+            if (diff >= 0 && diff < 7) byDay[diff].push(a);
+        });
+
+        days.forEach((label, i) => {
+            const x = i * colW;
+            const isToday = i === todayDow;
+
+            // Column bg
+            ctx.fillStyle = isToday ? '#eff6ff' : (i % 2 === 0 ? '#ffffff' : '#f9fafb');
+            ctx.fillRect(x, 0, colW, H);
+
+            // Day header
+            ctx.fillStyle = isToday ? '#2b7cff' : '#6b7280';
+            ctx.font = `${isToday ? 'bold ' : ''}13px Segoe UI, Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x + colW / 2, 22);
+
+            if (isToday) {
+                ctx.fillStyle = '#2b7cff';
+                ctx.fillRect(x + colW / 2 - 18, 26, 36, 3);
+            }
+
+            // Appointment pills
+            byDay[i].slice(0, 4).forEach((a, j) => {
+                const py = 40 + j * 28;
+                const statusColor = { PENDING:'#f59e0b', CONFIRMED:'#10b981', CANCELLED:'#ef4444', COMPLETED:'#6366f1' }[a.status] || '#9ca3af';
+                ctx.fillStyle = statusColor + '28';
+                roundRect(ctx, x + 6, py, colW - 12, 22, 5);
+                ctx.fillStyle = statusColor;
+                roundRect(ctx, x + 6, py, 4, 22, 2);
+
+                const t = new Date(a.dateTime).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+                ctx.fillStyle = '#1f2d3d';
+                ctx.font = '11px Segoe UI, Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${t} ${a.patientName.split(' ')[0]}`, x + 14, py + 15);
+            });
+
+            if (byDay[i].length > 4) {
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '11px Segoe UI, Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`+${byDay[i].length - 4} more`, x + colW / 2, 40 + 4 * 28 + 14);
+            }
+
+            // Column divider
+            if (i > 0) {
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x, 0); ctx.lineTo(x, H);
+                ctx.stroke();
+            }
+        });
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    async function loadData() {
+        try {
+            const [allRes, todayRes] = await Promise.all([
+                fetch(`http://localhost:8082/appointments/doctor/${user.id}`),
+                fetch(`http://localhost:8082/appointments/doctor/${user.id}/today`)
+            ]);
+
+            const all   = allRes.ok   ? await allRes.json()   : [];
+            const today = todayRes.ok ? await todayRes.json() : [];
+
+            // Stats
+            document.getElementById('statToday').textContent     = today.length;
+            document.getElementById('statPending').textContent   = all.filter(a => a.status === 'PENDING').length;
+            document.getElementById('statTotal').textContent     = all.length;
+            document.getElementById('statCompleted').textContent = all.filter(a => a.status === 'COMPLETED').length;
+
+            renderCharts(all);
+            drawWeekCanvas(all);
+            renderTodayTable(today);
+        } catch {
+            drawWeekCanvas([]);
+            document.getElementById('todayTable').innerHTML =
+                '<tr><td colspan="5" class="text-muted text-center" style="padding:20px">Could not load appointments.</td></tr>';
+        }
+    }
+
+    function renderCharts(all) {
+        const counts = { PENDING: 0, CONFIRMED: 0, COMPLETED: 0, CANCELLED: 0 };
+        all.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
+
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'Confirmed', 'Completed', 'Cancelled'],
+                datasets: [{ data: [counts.PENDING, counts.CONFIRMED, counts.COMPLETED, counts.CANCELLED],
+                    backgroundColor: ['#f59e0b','#10b981','#6366f1','#ef4444'],
+                    borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } } }
+        });
+
+        const months = []; const monthCounts = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(); d.setMonth(d.getMonth() - i);
+            months.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
+            monthCounts.push(all.filter(a => {
+                const ad = new Date(a.dateTime);
+                return ad.getMonth() === d.getMonth() && ad.getFullYear() === d.getFullYear();
+            }).length);
+        }
+
+        new Chart(document.getElementById('monthChart'), {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{ label: 'Appointments', data: monthCounts,
+                    borderColor: '#2b7cff', backgroundColor: 'rgba(43,124,255,0.1)',
+                    tension: 0.4, fill: true, pointRadius: 4 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    }
+
+    function renderTodayTable(today) {
+        const tbody = document.getElementById('todayTable');
+        if (!today.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center" style="padding:20px">No appointments today.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = today.map(a => `
+            <tr>
+                <td><strong>${a.patientName}</strong></td>
+                <td>${new Date(a.dateTime).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}</td>
+                <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.reason || '—'}</td>
+                <td><span class="badge badge-${a.status.toLowerCase()}">${a.status}</span></td>
+                <td class="flex-gap" style="gap:6px">
+                    ${a.status === 'PENDING' ? `<button class="btn btn-success btn-sm" onclick="setStatus(${a.id},'CONFIRMED')">Confirm</button>` : ''}
+                    ${a.status === 'CONFIRMED' ? `<button class="btn btn-sm" onclick="setStatus(${a.id},'COMPLETED')">Complete</button>` : ''}
+                    ${(a.status === 'PENDING'||a.status === 'CONFIRMED') ? `<button class="btn btn-danger btn-sm" onclick="setStatus(${a.id},'CANCELLED')">Cancel</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function setStatus(id, status) {
+        try {
+            await fetch(`http://localhost:8082/appointments/${id}/status`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            loadData();
+        } catch { alert('Could not update status.'); }
+    }
+
+    loadData();
+</script>
+</body>
+</html>
