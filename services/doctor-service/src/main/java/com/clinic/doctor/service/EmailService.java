@@ -19,7 +19,7 @@ public class EmailService {
 
     public void sendResetCode(String toEmail, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromAddress);
+        message.setFrom("Clinic App <" + fromAddress + ">");
         message.setTo(toEmail);
         message.setSubject("Clinic App – Password Reset Code");
         message.setText(
