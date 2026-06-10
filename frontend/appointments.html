@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Appointments — ClinicApp</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+    <h1>🏥 ClinicApp</h1>
+    <nav class="header-nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="profile.html">My Profile</a>
+        <a href="appointments.html" class="active">Appointments</a>
+    </nav>
+    <span class="header-user" id="headerUser"></span>
+</header>
+
+<div class="page">
+    <div class="flex-between mt-8">
+        <div>
+            <div class="page-title">My Appointments</div>
+            <div class="page-subtitle">View your history and schedule new visits</div>
+        </div>
+        <div class="flex-gap">
+            <button class="btn btn-sm" onclick="openModal()">+ New Appointment</button>
+            <button class="btn btn-secondary btn-sm" onclick="logout()">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Appointment list -->
+    <div class="card">
+        <div class="card-title">All Appointments</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Doctor</th>
+                        <th>Specialty</th>
+                        <th>Date &amp; Time</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="appointmentsTable">
+                    <tr><td colspan="6" class="text-muted text-center" style="padding:20px">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Modal -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3>Schedule an Appointment</h3>
+
+        <div class="form-group">
+            <label>Select Doctor</label>
+            <div id="doctorList" style="max-height:220px;overflow-y:auto;"></div>
+        </div>
+
+        <div class="profile-grid">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="apptDate">
+            </div>
+            <div class="form-group">
+                <label>Time</label>
+                <select id="apptTime">
+                    <option value="">— Select time —</option>
+                    <option>08:00</option><option>08:30</option>
+                    <option>09:00</option><option>09:30</option>
+                    <option>10:00</option><option>10:30</option>
+                    <option>11:00</option><option>11:30</option>
+                    <option>13:00</option><option>13:30</option>
+                    <option>14:00</option><option>14:30</option>
+                    <option>15:00</option><option>15:30</option>
+                    <option>16:00</option><option>16:30</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Reason for visit</label>
+            <textarea id="apptReason" placeholder="Describe your symptoms or reason…"></textarea>
+        </div>
+
+        <div id="modalMsg"></div>
+
+        <div class="modal-actions">
+            <button class="btn" onclick="scheduleAppointment()">Confirm</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!user || user.role !== 'patient') { window.location.href = 'login.html'; }
+
+    document.getElementById('headerUser').textContent = `${user.firstName} ${user.lastName}`;
+
+    function logout() { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+
+    // Set min date to today
+    document.getElementById('apptDate').min = new Date().toISOString().split('T')[0];
+
+    let doctors = [];
+    let selectedDoctor = null;
+
+    /* ── Modal ── */
+    async function openModal() {
+        document.getElementById('modalMsg').textContent = '';
+        selectedDoctor = null;
+        document.getElementById('apptDate').value = '';
+        document.getElementById('apptTime').value = '';
+        document.getElementById('apptReason').value = '';
+        document.getElementById('modalOverlay').classList.add('open');
+
+        const list = document.getElementById('doctorList');
+        list.innerHTML = '<div class="text-muted" style="padding:8px">Loading doctors…</div>';
+
+        try {
+            const res = await fetch('http://localhost:8083/doctors');
+            if (res.ok) {
+                doctors = await res.json();
+                if (!doctors.length) {
+                    list.innerHTML = '<div class="text-muted" style="padding:8px">No doctors registered yet.</div>';
+                    return;
+                }
+                list.innerHTML = doctors.map(d => `
+                    <div class="doctor-card" id="dcard-${d.id}" onclick="selectDoctor(${d.id})">
+                        <h4>Dr. ${d.firstName} ${d.lastName}</h4>
+                        <div class="specialty">${d.specialty || 'General Practitioner'}</div>
+                        ${d.availableDays ? `<div class="available">Available: ${d.availableDays}</div>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<div class="text-muted" style="padding:8px">Could not load doctors.</div>';
+            }
+        } catch {
+            list.innerHTML = '<div class="text-muted" style="padding:8px">Doctor service unavailable.</div>';
+        }
+    }
+
+    function selectDoctor(id) {
+        selectedDoctor = doctors.find(d => d.id === id);
+        document.querySelectorAll('.doctor-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById(`dcard-${id}`).classList.add('selected');
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    function showModalMsg(text, type) {
+        const el = document.getElementById('modalMsg');
+        el.className = 'msg ' + type;
+        el.textContent = text;
+    }
+
+    async function scheduleAppointment() {
+        if (!selectedDoctor) { showModalMsg('Please select a doctor.', 'error'); return; }
+        const date   = document.getElementById('apptDate').value;
+        const time   = document.getElementById('apptTime').value;
+        const reason = document.getElementById('apptReason').value.trim();
+
+        if (!date || !time) { showModalMsg('Please select a date and time.', 'error'); return; }
+        if (!reason) { showModalMsg('Please describe the reason for your visit.', 'error'); return; }
+
+        const dateTime = `${date}T${time}:00`;
+
+        try {
+            const res = await fetch('http://localhost:8082/appointments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    patientId:       user.id,
+                    patientName:     `${user.firstName} ${user.lastName}`,
+                    doctorId:        selectedDoctor.id,
+                    doctorName:      `Dr. ${selectedDoctor.firstName} ${selectedDoctor.lastName}`,
+                    doctorSpecialty: selectedDoctor.specialty || '',
+                    dateTime,
+                    reason
+                })
+            });
+
+            if (!res.ok) { showModalMsg('Failed to schedule. Please try again.', 'error'); return; }
+
+            showModalMsg('Appointment scheduled!', 'success');
+            setTimeout(() => { closeModal(); loadAppointments(); }, 1000);
+        } catch {
+            showModalMsg('Cannot connect to appointment service.', 'error');
+        }
+    }
+
+    /* ── Appointment list ── */
+    async function loadAppointments() {
+        const tbody = document.getElementById('appointmentsTable');
+        try {
+            const res = await fetch(`http://localhost:8082/appointments/patient/${user.id}`);
+            if (!res.ok) throw new Error();
+            const list = await res.json();
+
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center" style="padding:24px">
+                    No appointments yet. <button class="btn btn-sm" style="display:inline-block;width:auto;margin-left:8px" onclick="openModal()">Schedule one</button>
+                </td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(a => {
+                const dt = new Date(a.dateTime);
+                const isPast = dt < new Date();
+                const canCancel = a.status === 'PENDING' || a.status === 'CONFIRMED';
+                return `<tr>
+                    <td><strong>${a.doctorName}</strong></td>
+                    <td>${a.doctorSpecialty || '—'}</td>
+                    <td>${dt.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
+                    <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.reason || '—'}</td>
+                    <td><span class="badge badge-${a.status.toLowerCase()}">${a.status}</span></td>
+                    <td>${canCancel
+                        ? `<button class="btn btn-danger btn-sm" onclick="cancelAppointment(${a.id})">Cancel</button>`
+                        : '—'
+                    }</td>
+                </tr>`;
+            }).join('');
+        } catch {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center" style="padding:20px">Could not load appointments.</td></tr>';
+        }
+    }
+
+    async function cancelAppointment(id) {
+        if (!confirm('Cancel this appointment?')) return;
+        try {
+            await fetch(`http://localhost:8082/appointments/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'CANCELLED' })
+            });
+            loadAppointments();
+        } catch {
+            alert('Could not cancel. Please try again.');
+        }
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('modalOverlay')) closeModal();
+    });
+
+    loadAppointments();
+</script>
+</body>
+</html>
