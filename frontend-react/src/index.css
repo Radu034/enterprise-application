@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables ── dark theme (default) ────────────────────────────────── */
+:root {
+  --c-bg:      13  17  23;      /* #0D1117 */
+  --c-surface: 22  27  34;      /* #161B22 */
+  --c-border:  42  52  70;      /* #2A3446 */
+  --c-teal:    0   201 167;     /* #00C9A7 */
+  --c-blue:    61  142 240;     /* #3D8EF0 */
+  --c-orange:  240 123 61;      /* #F07B3D */
+
+  --text-primary:   #E6EDF3;
+  --text-secondary: #9CA3AF;
+  --text-muted:     #6B7280;
+  --text-faint:     #374151;
+  --text-placeholder: #4B5563;
+
+  --card-bg: #161B22;
+  --card-border: #2A3446;
+  --body-bg: #0D1117;
+  --scrollbar-thumb: #2A3446;
+  --scrollbar-hover: #3a4a60;
+  --input-bg: #0D1117;
+  --select-opt-bg: #161B22;
+  --hover-overlay: rgba(255,255,255,0.05);
+  --hover-overlay-strong: rgba(255,255,255,0.08);
+  --invert-overlay: rgba(0,0,0,0.05);
+}
+
+/* ── Light theme ──────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --c-bg:      240 246 252;   /* #F0F6FC – subtle blue-gray */
+  --c-surface: 255 255 255;   /* #FFFFFF */
+  --c-border:  208 215 222;   /* #D0D7DE */
+  --c-teal:    13  148 136;   /* #0D9488 – Tailwind teal-600 */
+  --c-blue:    9   105 218;   /* #0969DA – GitHub blue */
+  --c-orange:  207 99  13;    /* #CF630D */
+
+  --text-primary:   #1F2328;
+  --text-secondary: #656D76;
+  --text-muted:     #818B98;
+  --text-faint:     #D0D7DE;
+  --text-placeholder: #818B98;
+
+  --card-bg: #FFFFFF;
+  --card-border: #D0D7DE;
+  --body-bg: #F0F6FC;
+  --scrollbar-thumb: #D0D7DE;
+  --scrollbar-hover: #B0BAC4;
+  --input-bg: #F6F8FA;
+  --select-opt-bg: #FFFFFF;
+  --hover-overlay: rgba(0,0,0,0.04);
+  --hover-overlay-strong: rgba(0,0,0,0.07);
+  --invert-overlay: rgba(0,0,0,0.04);
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { transition: background-color 200ms ease, color 200ms ease; }
+
+  body {
+    background-color: var(--body-bg);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar       { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+  input[type="date"],
+  input[type="time"] { color-scheme: dark; }
+  [data-theme="light"] input[type="date"],
+  [data-theme="light"] input[type="time"] { color-scheme: light; }
+
+  select option {
+    background-color: var(--select-opt-bg);
+    color: var(--text-primary);
+  }
+}
+
+@layer utilities {
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    transition: background-color 200ms ease, border-color 200ms ease;
+  }
+
+  .card-hover {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .card-hover:hover {
+    border-color: var(--hover-overlay-strong);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+}
+
+/* ── Light mode: remap Tailwind text/bg utilities that use hardcoded shades ── */
+
+/* text-white → dark primary text */
+html[data-theme="light"] .text-white  { color: var(--text-primary) !important; }
+
+/* gray hierarchy → readable on white */
+html[data-theme="light"] .text-gray-300 { color: #475569 !important; }
+html[data-theme="light"] .text-gray-400 { color: #656D76 !important; }
+html[data-theme="light"] .text-gray-500 { color: #818B98 !important; }
+html[data-theme="light"] .text-gray-600 { color: #A8B3BD !important; }
+html[data-theme="light"] .text-gray-700 { color: #D0D7DE !important; }
+html[data-theme="light"] .text-gray-800 { color: #E8ECF0 !important; }
+
+/* placeholder color */
+html[data-theme="light"] .placeholder-gray-600::placeholder { color: var(--text-placeholder) !important; }
+
+/* white overlays → invert to black overlays */
+html[data-theme="light"] .bg-white\/5    { background-color: rgba(0,0,0,0.04) !important; }
+html[data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(0,0,0,0.04) !important; }
+html[data-theme="light"] .bg-white\/\[0\.02\] { background-color: rgba(0,0,0,0.02) !important; }
+html[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover { background-color: rgba(0,0,0,0.02) !important; }
+
+/* white border overlays */
+html[data-theme="light"] .border-white\/10  { border-color: rgba(0,0,0,0.10) !important; }
+html[data-theme="light"] .hover\:border-white\/10:hover { border-color: rgba(0,0,0,0.10) !important; }
+html[data-theme="light"] .border-white\/20  { border-color: rgba(0,0,0,0.15) !important; }
+html[data-theme="light"] .hover\:border-white\/20:hover { border-color: rgba(0,0,0,0.15) !important; }
+
+/* Sidebar active link in light mode */
+html[data-theme="light"] .text-black { color: #1F2328 !important; }
+
+/* Input backgrounds */
+html[data-theme="light"] .bg-bg { background-color: var(--input-bg) !important; }
+
+/* Focus ring on teal stays legible */
+html[data-theme="light"] .focus\:border-teal:focus { border-color: rgb(var(--c-teal)) !important; }
