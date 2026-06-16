@@ -22,4 +22,61 @@ services:
     ports:
       - "9092:9092"
     environment:
+<<<<<<< Updated upstream
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+=======
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clinic_db
+      SPRING_DATASOURCE_USERNAME: clinic
+      SPRING_DATASOURCE_PASSWORD: clinic
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  appointment-service:
+    build: ../services/appointmentservice
+    container_name: clinic-appointment-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clinic_db
+      SPRING_DATASOURCE_USERNAME: clinic
+      SPRING_DATASOURCE_PASSWORD: clinic
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  imaging-service:
+    build: ../services/imaging-service
+    container_name: clinic-imaging-service
+    ports:
+      - "8084:8084"
+
+  diagnostic-service:
+    build: ../services/diagnostic-service
+    container_name: clinic-diagnostic-service
+    ports:
+      - "8085:8085"
+
+  facility-service:
+    build: ../services/facility-service
+    container_name: clinic-facility-service
+    ports:
+      - "8086:8086"
+
+  api-gateway:
+    build: ../services/api-gateway
+    container_name: clinic-api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - patient-service
+      - doctor-service
+      - appointment-service
+      - imaging-service
+      - diagnostic-service
+      - facility-service
+>>>>>>> Stashed changes
