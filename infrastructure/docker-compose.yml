@@ -91,4 +91,7 @@ services:
       - appointment-service
       - imaging-service
       - diagnostic-service
+<<<<<<< Updated upstream
       - facility-service
+=======
+>>>>>>> Stashed changes

@@ -4,6 +4,8 @@
 
 # Build
 target/
+node_modules/
+dist/
 
 # Logs
 *.log
