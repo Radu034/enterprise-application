@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: appointment-service
   datasource:
     url: jdbc:postgresql://localhost:5432/clinic_db
     username: clinic
@@ -11,3 +13,15 @@ spring:
 
 server:
   port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
