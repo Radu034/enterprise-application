@@ -58,6 +58,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clinic_db
       SPRING_DATASOURCE_USERNAME: clinic
       SPRING_DATASOURCE_PASSWORD: clinic
+      PATIENT_SERVICE_URL: http://patient-service:8081
+      DOCTOR_SERVICE_URL: http://doctor-service:8083
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,3 +94,57 @@ services:
       - imaging-service
       - diagnostic-service
       - facility-service
+
+  # ── Service Mesh: Envoy proxy ──────────────────────────────────────────────
+
+  envoy:
+    image: envoyproxy/envoy:v1.29-latest
+    container_name: clinic-envoy
+    ports:
+      - "10000:10000"  # proxy ingress
+      - "9901:9901"    # admin UI
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
+    command: ["/usr/local/bin/envoy", "-c", "/etc/envoy/envoy.yaml"]
+    depends_on:
+      - patient-service
+      - doctor-service
+      - appointment-service
+
+  # ── Observability ──────────────────────────────────────────────────────────
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: clinic-zipkin
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: clinic-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  loki:
+    image: grafana/loki:2.9.7
+    container_name: clinic-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: clinic-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki

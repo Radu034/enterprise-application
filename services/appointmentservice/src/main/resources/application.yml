@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: appointment-service
   datasource:
     url: jdbc:postgresql://localhost:5432/clinic_db
     username: clinic
@@ -11,3 +13,51 @@ spring:
 
 server:
   port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
+
+services:
+  patient-url: ${PATIENT_SERVICE_URL:http://localhost:8081}
+  doctor-url: ${DOCTOR_SERVICE_URL:http://localhost:8083}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      patient-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
+      doctor-service:
+        registerHealthIndicator: true
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
+  retry:
+    instances:
+      patient-service:
+        maxAttempts: 3
+        waitDuration: 500ms
+      doctor-service:
+        maxAttempts: 3
+        waitDuration: 500ms
+  timelimiter:
+    instances:
+      patient-service:
+        timeoutDuration: 2s
+      doctor-service:
+        timeoutDuration: 2s
