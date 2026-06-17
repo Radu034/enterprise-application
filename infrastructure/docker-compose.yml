@@ -58,6 +58,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clinic_db
       SPRING_DATASOURCE_USERNAME: clinic
       SPRING_DATASOURCE_PASSWORD: clinic
+      PATIENT_SERVICE_URL: http://patient-service:8081
+      DOCTOR_SERVICE_URL: http://doctor-service:8083
     depends_on:
       postgres:
         condition: service_healthy

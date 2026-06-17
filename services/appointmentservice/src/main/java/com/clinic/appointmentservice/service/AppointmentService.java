@@ -1,9 +1,13 @@
 package com.clinic.appointmentservice.service;
 
+import com.clinic.appointmentservice.client.DoctorServiceClient;
+import com.clinic.appointmentservice.client.PatientServiceClient;
 import com.clinic.appointmentservice.dto.AppointmentRequest;
 import com.clinic.appointmentservice.dto.AppointmentResponse;
 import com.clinic.appointmentservice.entity.Appointment;
 import com.clinic.appointmentservice.repository.AppointmentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -12,13 +16,24 @@ import java.util.List;
 @Service
 public class AppointmentService {
 
-    private final AppointmentRepository repository;
+    private static final Logger log = LoggerFactory.getLogger(AppointmentService.class);
 
-    public AppointmentService(AppointmentRepository repository) {
+    private final AppointmentRepository repository;
+    private final PatientServiceClient patientClient;
+    private final DoctorServiceClient doctorClient;
+
+    public AppointmentService(AppointmentRepository repository,
+                              PatientServiceClient patientClient,
+                              DoctorServiceClient doctorClient) {
         this.repository = repository;
+        this.patientClient = patientClient;
+        this.doctorClient = doctorClient;
     }
 
     public AppointmentResponse schedule(AppointmentRequest req) {
+        log.info("Validating patient {} and doctor {} via inter-service calls", req.patientId, req.doctorId);
+        patientClient.patientExists(req.patientId);
+        doctorClient.doctorExists(req.doctorId);
         Appointment a = new Appointment();
         a.setPatientId(req.patientId);
         a.setPatientName(req.patientName);

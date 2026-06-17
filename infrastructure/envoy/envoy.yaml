@@ -1,0 +1,100 @@
+static_resources:
+  listeners:
+    - name: listener_0
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 10000
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: clinic_services
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            prefix: "/patients"
+                          route:
+                            cluster: patient_service
+                            timeout: 5s
+                            retry_policy:
+                              retry_on: "5xx,connect-failure,reset"
+                              num_retries: 3
+                              per_try_timeout: 2s
+                        - match:
+                            prefix: "/doctors"
+                          route:
+                            cluster: doctor_service
+                            timeout: 5s
+                            retry_policy:
+                              retry_on: "5xx,connect-failure,reset"
+                              num_retries: 3
+                              per_try_timeout: 2s
+                        - match:
+                            prefix: "/appointments"
+                          route:
+                            cluster: appointment_service
+                            timeout: 5s
+                            retry_policy:
+                              retry_on: "5xx,connect-failure,reset"
+                              num_retries: 3
+                              per_try_timeout: 2s
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: patient_service
+      connect_timeout: 1s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: patient_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: patient-service
+                      port_value: 8081
+
+    - name: doctor_service
+      connect_timeout: 1s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: doctor_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: doctor-service
+                      port_value: 8083
+
+    - name: appointment_service
+      connect_timeout: 1s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: appointment_service
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: appointment-service
+                      port_value: 8082
+
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
