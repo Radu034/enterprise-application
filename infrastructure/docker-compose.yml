@@ -95,22 +95,6 @@ services:
       - diagnostic-service
       - facility-service
 
-  # ── Service Mesh: Envoy proxy ──────────────────────────────────────────────
-
-  envoy:
-    image: envoyproxy/envoy:v1.29-latest
-    container_name: clinic-envoy
-    ports:
-      - "10000:10000"  # proxy ingress
-      - "9901:9901"    # admin UI
-    volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
-    command: ["/usr/local/bin/envoy", "-c", "/etc/envoy/envoy.yaml"]
-    depends_on:
-      - patient-service
-      - doctor-service
-      - appointment-service
-
   # ── Observability ──────────────────────────────────────────────────────────
 
   zipkin:
